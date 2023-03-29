@@ -82,7 +82,8 @@ namespace sched
 			return 0;
 		}
 
-		std::pair<int, bool> bits_set(uint32_t *retBits, uint32_t bitsToSet)
+		std::pair<int, bool>
+		bits_set(uint32_t *retBits, uint32_t bitsToSet, bool noYield = false)
 		{
 			uint32_t newBits, finalBits;
 
@@ -130,7 +131,7 @@ namespace sched
 			auto wokeMultiwaiters =
 			  sched::MultiWaiter::wake_waiters(this, newBits);
 
-			return {0, shouldYield || wokeMultiwaiters};
+			return {0, (!(noYield)) && (shouldYield || wokeMultiwaiters)};
 		}
 
 		int bits_get(uint32_t *retBits)

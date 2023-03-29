@@ -11,6 +11,7 @@
 #include <cdefs.h>
 #include <cheri.hh>
 #include <compartment.h>
+#include <event.h>
 #include <futex.h>
 #include <locks.hh>
 #include <new>
@@ -403,8 +404,7 @@ int __cheri_compartment("sched")
                   void     *evt,
                   uint32_t *retBits,
                   uint32_t  bitsToWait,
-                  bool      clearOnExit,
-                  bool      waitAll)
+                  uint32_t  flags)
 {
 	if (!check_pointer<PermissionSet{Permission::Store}>(retBits) ||
 	    !check_timeout_pointer(timeout))
@@ -412,20 +412,28 @@ int __cheri_compartment("sched")
 		return -EINVAL;
 	}
 	return typed_op<Event>(evt, [&](Event &event) {
-		return event.bits_wait(
-		  retBits, bitsToWait, clearOnExit, waitAll, timeout);
+		return event.bits_wait(retBits,
+		                       bitsToWait,
+		                       has_event_wait_flag<EventWaitClearOnExit>(flags),
+		                       has_event_wait_flag<EventWaitAll>(flags),
+		                       timeout);
 	});
 }
 
 [[cheri::interrupt_state(disabled)]] int __cheri_compartment("sched")
-  event_bits_set(void *evt, uint32_t *retBits, uint32_t bitsToSet)
+  event_bits_set(void     *evt,
+                 uint32_t *retBits,
+                 uint32_t  bitsToSet,
+                 uint32_t  flags)
 {
 	if (!check_pointer<PermissionSet{Permission::Store}>(retBits))
 	{
 		return -EINVAL;
 	}
-	return typed_op<Event>(
-	  evt, [&](Event &event) { return event.bits_set(retBits, bitsToSet); });
+	return typed_op<Event>(evt, [&](Event &event) {
+		return event.bits_set(
+		  retBits, bitsToSet, has_event_set_flag<EventSetNoYield>(flags));
+	});
 }
 
 [[cheri::interrupt_state(disabled)]] int __cheri_compartment("sched")
